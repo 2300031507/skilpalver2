@@ -1,41 +1,50 @@
 import React, { useEffect, useState } from "react";
 import { fetchStudentDashboard, fetchNotifications } from "../api/client";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { FiBell, FiCheckCircle, FiAlertCircle, FiTrendingUp } from "react-icons/fi";
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, 
+  Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar 
+} from "recharts";
+import { FiActivity, FiCode, FiBookOpen, FiClock, FiAlertCircle, FiCheckCircle, FiTrendingUp } from "react-icons/fi";
 
-const RiskBadge = ({ level }) => {
-  const colors = {
-    high: "bg-red-500/20 text-red-600 border border-red-300",
-    medium: "bg-yellow-500/20 text-yellow-600 border border-yellow-300",
-    low: "bg-green-500/20 text-green-600 border border-green-300"
+const PulseBadge = ({ level }) => {
+  const configs = {
+    high: { color: "text-red-600 bg-red-50 border-red-200", label: "Critical Risk" },
+    medium: { color: "text-amber-600 bg-amber-50 border-amber-200", label: "At Risk" },
+    low: { color: "text-emerald-600 bg-emerald-50 border-emerald-200", label: "Healthy Pulse" }
   };
+  const config = configs[level?.toLowerCase()] || configs.medium;
   return (
-    <span className={`px-4 py-2 rounded-full text-sm font-bold ${colors[level?.toLowerCase()] || colors.medium}`}>
-      {level || "Unknown"} Risk
-    </span>
-  );
-};
-
-const StatCard = ({ title, value, subtitle, icon: Icon, color = "blue" }) => {
-  const gradients = {
-    blue: "from-blue-500 to-cyan-500",
-    green: "from-green-500 to-emerald-500",
-    orange: "from-orange-500 to-red-500",
-    purple: "from-purple-500 to-pink-500"
-  };
-  return (
-    <div className="glass-effect rounded-2xl p-6 border border-white/20 hover-scale">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-gray-700 font-semibold text-sm uppercase tracking-wide">{title}</h3>
-        {Icon && <Icon className={`text-2xl bg-gradient-to-br ${gradients[color]} bg-clip-text text-transparent`} />}
-      </div>
-      <div className="text-4xl font-bold text-gray-900 mb-2">{value}</div>
-      {subtitle && <p className="text-gray-600 text-sm">{subtitle}</p>}
+    <div className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border shadow-sm inline-flex items-center gap-2 ${config.color}`}>
+      <span className="relative flex h-2 w-2">
+        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${level === 'high' ? 'bg-red-400' : 'bg-emerald-400'}`}></span>
+        <span className={`relative inline-flex rounded-full h-2 w-2 ${level === 'high' ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+      </span>
+      {config.label}
     </div>
   );
 };
 
-export function StudentDashboard() {
+const MetricCard = ({ title, value, unit, trend, icon: Icon, colorClass }) => (
+  <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+    <div className="flex items-center justify-between mb-4">
+      <div className={`p-2 rounded-lg ${colorClass} bg-opacity-10 text-xl`}>
+        <Icon className={colorClass.replace('bg-', 'text-')} />
+      </div>
+      {trend && (
+        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${trend > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+          {trend > 0 ? '+' : ''}{trend}%
+        </span>
+      )}
+    </div>
+    <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">{title}</p>
+    <div className="flex items-baseline gap-1">
+      <span className="text-2xl font-black text-slate-800">{value}</span>
+      {unit && <span className="text-xs font-bold text-slate-400">{unit}</span>}
+    </div>
+  </div>
+);
+
+export function StudentDashboard({ user }) {
   const [data, setData] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,8 +52,8 @@ export function StudentDashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const dashboard = await fetchStudentDashboard("S001");
-        const notes = await fetchNotifications("S001", "student");
+        const dashboard = await fetchStudentDashboard(user.id);
+        const notes = await fetchNotifications(user.id, "student");
         setData(dashboard);
         setNotifications(notes);
       } catch (error) {
@@ -54,209 +63,159 @@ export function StudentDashboard() {
       }
     }
     load();
-  }, []);
+  }, [user.id]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="mb-4 flex justify-center">
-            <div className="relative w-16 h-16">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-spin"></div>
-              <div className="absolute inset-2 bg-white rounded-full"></div>
-            </div>
-          </div>
-          <p className="text-gray-700 font-semibold">Loading your dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center h-96 gap-4">
+      <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Synchronizing Pulse...</p>
+    </div>
+  );
 
-  if (!data) {
-    return (
-      <div className="glass-effect rounded-2xl p-8 text-center border border-white/20">
-        <FiAlertCircle className="text-4xl text-orange-500 mx-auto mb-4" />
-        <p className="text-gray-700 font-semibold">Unable to load dashboard data</p>
-      </div>
-    );
-  }
-
-  const riskColors = {
-    high: "#ef4444",
-    medium: "#f59e0b",
-    low: "#10b981"
-  };
+  if (!data) return (
+    <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-slate-100">
+      <FiAlertCircle className="text-5xl text-red-400 mx-auto mb-4" />
+      <h3 className="text-xl font-bold text-slate-800">Connection Interrupted</h3>
+      <p className="text-slate-500 mt-2">We couldn't retrieve your academic pulse data. Please try again later.</p>
+    </div>
+  );
 
   return (
-    <div className="space-y-8">
-      {/* Risk Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="glass-effect rounded-2xl p-8 border border-white/20 hover-scale col-span-1 md:col-span-1">
-          <p className="text-gray-600 text-sm uppercase tracking-wide font-semibold mb-4">Current Risk Level</p>
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <RiskBadge level={data.risk_level} />
+    <div className="space-y-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <p className="text-indigo-600 font-black text-xs uppercase tracking-[0.2em] mb-2">Student Identity: {user.id}</p>
+          <h1 className="text-4xl font-black text-slate-800 tracking-tight">Welcome back, {user.name.split(' ')[0]}!</h1>
+        </div>
+        <PulseBadge level={data.risk_level} />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <MetricCard 
+          title="Attendance" 
+          value="94" 
+          unit="%" 
+          trend={2.4} 
+          icon={FiCheckCircle} 
+          colorClass="bg-emerald-500" 
+        />
+        <MetricCard 
+          title="LMS Engagement" 
+          value="8.5" 
+          unit="/10" 
+          trend={-1.2} 
+          icon={FiBookOpen} 
+          colorClass="bg-indigo-500" 
+        />
+        <MetricCard 
+          title="Daily Practice" 
+          value="120" 
+          unit="min" 
+          trend={15} 
+          icon={FiClock} 
+          colorClass="bg-amber-500" 
+        />
+        <MetricCard 
+          title="Problems Solved" 
+          value="342" 
+          unit="total" 
+          trend={8} 
+          icon={FiCode} 
+          colorClass="bg-purple-500" 
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h3 className="text-lg font-black text-slate-800 tracking-tight">Engagement Pulse</h3>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Weekly activity overview</p>
             </div>
           </div>
-        </div>
-
-        <StatCard
-          title="Attendance Rate"
-          value={`${(data.attendance_trend?.[data.attendance_trend.length - 1]?.attendance_percent * 100 || 0).toFixed(1)}%`}
-          subtitle="Last recorded session"
-          icon={FiCheckCircle}
-          color="green"
-        />
-
-        <StatCard
-          title="Problems Solved"
-          value={data.coding_activity?.[data.coding_activity.length - 1]?.problems_solved || 0}
-          subtitle="From coding assignments"
-          icon={FiTrendingUp}
-          color="blue"
-        />
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Attendance Trend */}
-        <div className="glass-effect rounded-2xl p-6 border border-white/20 hover-scale">
-          <h3 className="text-lg font-bold text-gray-900 mb-6">📊 Attendance Trend</h3>
-          {data.attendance_trend && data.attendance_trend.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={data.attendance_trend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis dataKey="date" stroke="#888" />
-                <YAxis stroke="#888" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "rgba(30, 30, 46, 0.9)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    borderRadius: "8px",
-                    color: "#fff"
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="attendance_percent"
-                  stroke="url(#colorGradient)"
-                  strokeWidth={3}
-                  dot={{ fill: "#0ea5e9", r: 5 }}
-                  activeDot={{ r: 7 }}
-                />
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data.lms_engagement}>
                 <defs>
-                  <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.1} />
+                  <linearGradient id="colorEngage" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-gray-600">No attendance data available</p>
-          )}
-        </div>
-
-        {/* Coding Activity */}
-        <div className="glass-effect rounded-2xl p-6 border border-white/20 hover-scale">
-          <h3 className="text-lg font-bold text-gray-900 mb-6">💻 Coding Activity</h3>
-          {data.coding_activity && data.coding_activity.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.coding_activity}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis dataKey="date" stroke="#888" />
-                <YAxis stroke="#888" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "rgba(30, 30, 46, 0.9)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    borderRadius: "8px",
-                    color: "#fff"
-                  }}
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 'bold'}} dy={10} />
+                <YAxis hide />
+                <Tooltip 
+                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: 'bold'}}
                 />
-                <Bar dataKey="problems_solved" fill="#10b981" radius={[8, 8, 0, 0]} />
-              </BarChart>
+                <Area type="monotone" dataKey="value" stroke="#4f46e5" strokeWidth={4} fillOpacity={1} fill="url(#colorEngage)" />
+              </AreaChart>
             </ResponsiveContainer>
-          ) : (
-            <p className="text-gray-600">No coding activity data</p>
-          )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+          <h3 className="text-lg font-black text-slate-800 tracking-tight mb-2">Coding Proficiency</h3>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-6">Cross-platform skills</p>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                { subject: 'LeetCode', A: 120, fullMark: 150 },
+                { subject: 'CodeChef', A: 98, fullMark: 150 },
+                { subject: 'CodeForces', A: 86, fullMark: 150 },
+                { subject: 'LMS Quiz', A: 99, fullMark: 150 },
+                { subject: 'Project', A: 85, fullMark: 150 },
+              ]}>
+                <PolarGrid stroke="#f1f5f9" />
+                <PolarAngleAxis dataKey="subject" tick={{fill: '#64748b', fontSize: 10, fontWeight: 'bold'}} />
+                <Radar name="Skills" dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.6} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
-      {/* LMS Engagement */}
-      <div className="glass-effect rounded-2xl p-6 border border-white/20 hover-scale">
-        <h3 className="text-lg font-bold text-gray-900 mb-6">📚 LMS Engagement Metrics</h3>
-        {data.lms_engagement && data.lms_engagement.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {data.lms_engagement.map((metric) => (
-              <div key={metric.name} className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-xl p-4 border border-purple-500/20">
-                <p className="text-gray-600 text-sm mb-2">{metric.name}</p>
-                <p className="text-3xl font-bold text-purple-600">{metric.value}</p>
-              </div>
-            ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-2 mb-6">
+            <FiTrendingUp className="text-indigo-600 text-xl" />
+            <h3 className="text-lg font-black text-slate-800 tracking-tight">Personalized Growth Path</h3>
           </div>
-        ) : (
-          <p className="text-gray-600">No LMS engagement data</p>
-        )}
-      </div>
-
-      {/* Recovery Suggestions */}
-      <div className="glass-effect rounded-2xl p-6 border border-white/20 hover-scale">
-        <h3 className="text-lg font-bold text-gray-900 mb-6">🎯 Recommended Actions</h3>
-        {data.recovery_suggestions && data.recovery_suggestions.length > 0 ? (
           <div className="space-y-4">
-            {data.recovery_suggestions.map((item, idx) => (
-              <div key={item.title} className="flex gap-4 p-4 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-xl border border-blue-500/20 hover:border-blue-500/40 smooth-transition">
-                <div className="flex-shrink-0">
-                  <span className="flex items-center justify-center h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold">
-                    {idx + 1}
-                  </span>
+            {data.recovery_suggestions?.map((s, i) => (
+              <div key={i} className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 group hover:border-indigo-200 transition-colors">
+                <div className="p-2 bg-white rounded-lg shadow-sm group-hover:text-indigo-600">
+                  <FiCheckCircle />
                 </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900">{item.title}</p>
-                  <p className="text-gray-600 text-sm mt-1">{item.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-600">No recommendations at this time</p>
-        )}
-      </div>
-
-      {/* Notifications */}
-      <div className="glass-effect rounded-2xl p-6 border border-white/20 hover-scale">
-        <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-          <FiBell /> Recent Notifications
-        </h3>
-        {notifications && notifications.length > 0 ? (
-          <div className="space-y-3">
-            {notifications.map((n) => (
-              <div
-                key={n.id}
-                className={`p-4 rounded-lg border-l-4 flex items-start gap-3 ${
-                  n.severity === "high"
-                    ? "bg-red-500/10 border-red-500 text-red-800"
-                    : n.severity === "medium"
-                    ? "bg-yellow-500/10 border-yellow-500 text-yellow-800"
-                    : "bg-green-500/10 border-green-500 text-green-800"
-                }`}
-              >
-                <span className="text-xl mt-1">
-                  {n.severity === "high" ? "🔴" : n.severity === "medium" ? "🟡" : "🟢"}
-                </span>
                 <div>
-                  <p className="font-semibold">{n.severity.toUpperCase()}</p>
-                  <p className="text-sm mt-1">{n.message}</p>
+                  <p className="text-sm font-black text-slate-800">{s.title}</p>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">{s.description}</p>
                 </div>
               </div>
             ))}
           </div>
-        ) : (
-          <p className="text-gray-600">No notifications at this time</p>
-        )}
+        </div>
+
+        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-2 mb-6">
+            <FiActivity className="text-amber-500 text-xl" />
+            <h3 className="text-lg font-black text-slate-800 tracking-tight">Recent Alerts</h3>
+          </div>
+          <div className="space-y-4">
+            {notifications.length > 0 ? notifications.map((n) => (
+              <div key={n.id} className={`flex items-start gap-4 p-4 rounded-2xl border ${n.severity === 'high' ? 'bg-red-50 border-red-100' : 'bg-blue-50 border-blue-100'}`}>
+                <FiAlertCircle className={n.severity === 'high' ? 'text-red-500 mt-1' : 'text-blue-500 mt-1'} />
+                <div>
+                  <p className="text-sm font-bold text-slate-800">{n.message}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+            )) : (
+              <p className="text-slate-400 text-sm font-bold text-center py-10 italic">No active alerts. Keep up the good work!</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-

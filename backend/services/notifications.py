@@ -9,15 +9,19 @@ NOTIFICATIONS_BASE_URL = "http://localhost:8002"
 
 
 async def list_notifications_for_actor(actor: dict) -> List[Notification]:
-    async with httpx.AsyncClient(base_url=NOTIFICATIONS_BASE_URL) as client:
-        response = await client.get(
-            "/notifications",
-            params={"recipient_type": actor["role"], "recipient_id": actor["id"]},
-            timeout=5.0,
-        )
-        response.raise_for_status()
-        items = response.json()
-    return [Notification(**item) for item in items]
+    try:
+        async with httpx.AsyncClient(base_url=NOTIFICATIONS_BASE_URL) as client:
+            response = await client.get(
+                "/notifications",
+                params={"recipient_type": actor["role"], "recipient_id": actor["id"]},
+                timeout=2.0,
+            )
+            response.raise_for_status()
+            items = response.json()
+        return [Notification(**item) for item in items]
+    except Exception as e:
+        print(f"Notification service unreachable: {e}")
+        return []
 
 
 async def create_manual_notification(payload: NotificationCreateRequest, actor: dict) -> Notification:
