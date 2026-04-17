@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { fetchPlatformConfig, fetchStudentProfiles, linkStudentProfiles } from "../api/client";
-import { FiLink, FiCheck, FiExternalLink, FiSave, FiLoader } from "react-icons/fi";
+import { fetchPlatformConfig, fetchStudentProfiles, linkStudentProfiles, unlinkStudentProfile } from "../api/client";
+import { FiLink, FiCheck, FiExternalLink, FiSave, FiLoader, FiTrash2 } from "react-icons/fi";
 
 export function StudentProfileLink({ user, universityId = "UNI001" }) {
   const [platforms, setPlatforms] = useState([]);
@@ -47,6 +47,7 @@ export function StudentProfileLink({ user, universityId = "UNI001" }) {
   const handleSave = async () => {
     setSaving(true);
     setError("");
+    setSaved(false);
     try {
       const profileList = Object.entries(profiles)
         .filter(([_, username]) => username && username.trim())
@@ -55,10 +56,46 @@ export function StudentProfileLink({ user, universityId = "UNI001" }) {
           username: username.trim(),
         }));
 
-      await linkStudentProfiles(universityId, user.id, profileList);
+      if (profileList.length === 0) {
+        throw new Error("Please enter at least one username or profile URL.");
+      }
+
+      const res = await linkStudentProfiles(universityId, user.id, profileList);
+      
+      // Update local profiles with potentially extracted usernames from backend
+      const newMap = {};
+      (res.profiles || []).forEach(p => {
+        newMap[p.platform_slug] = p.username;
+      });
+      setProfiles(newMap);
+      
       setSaved(true);
+      // Trigger a refresh of the dashboard data if needed
+      window.dispatchEvent(new CustomEvent("profile-updated"));
     } catch (err) {
-      setError("Failed to save profiles. Please try again.");
+      setError(err.message || "Failed to save profiles. Please check if the URLs/Usernames are correct.");
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUnlink = async (platformSlug) => {
+    if (!window.confirm(`Are you sure you want to remove your ${platformSlug} profile?`)) return;
+    
+    setSaving(true);
+    setError("");
+    try {
+      await unlinkStudentProfile(universityId, user.id, platformSlug);
+      setProfiles(prev => {
+        const next = { ...prev };
+        delete next[platformSlug];
+        return next;
+      });
+      setSaved(true);
+      window.dispatchEvent(new CustomEvent("profile-updated"));
+    } catch (err) {
+      setError("Failed to remove profile. Please try again.");
       console.error(err);
     } finally {
       setSaving(false);
@@ -67,6 +104,10 @@ export function StudentProfileLink({ user, universityId = "UNI001" }) {
 
   const getProfileUrl = (platform, username) => {
     if (!username) return null;
+    // If username is already a full URL, just return it
+    if (username.startsWith("http")) return username;
+    
+    // Otherwise use the template
     return platform.profile_url_template.replace("{username}", username);
   };
 
@@ -122,19 +163,28 @@ export function StudentProfileLink({ user, universityId = "UNI001" }) {
                 <input
                   value={username}
                   onChange={(e) => handleChange(platform.slug, e.target.value)}
-                  placeholder={`Your ${platform.display_name} username`}
-                  className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder={`Username or Profile URL`}
+                  className={`flex-1 px-4 py-2 bg-slate-50 border ${error && error.includes(platform.slug) ? 'border-red-500' : 'border-slate-200'} rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500`}
                 />
                 {url && (
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
-                    title="Preview profile"
-                  >
-                    <FiExternalLink size={16} />
-                  </a>
+                  <div className="flex gap-1">
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
+                      title="Preview profile"
+                    >
+                      <FiExternalLink size={16} />
+                    </a>
+                    <button
+                      onClick={() => handleUnlink(platform.slug)}
+                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Remove profile"
+                    >
+                      <FiTrash2 size={16} />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

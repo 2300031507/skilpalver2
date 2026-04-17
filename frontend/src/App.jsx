@@ -18,14 +18,23 @@ function App() {
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+      } catch (e) {
+        localStorage.removeItem("user");
+      }
     }
   }, []);
 
   const handleLogin = (userData) => {
+    console.log("Setting user in App:", userData);
     setUser(userData);
     localStorage.setItem("user", JSON.stringify(userData));
-    navigate(userData.role === "student" ? "/student" : userData.role === "admin" ? "/admin" : "/teacher");
+    const role = userData.role;
+    if (role === "student") navigate("/student");
+    else if (role === "admin") navigate("/admin");
+    else navigate("/teacher");
   };
 
   const handleLogout = () => {

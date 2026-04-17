@@ -19,7 +19,7 @@ async def seed_coding_data():
     client = AsyncIOMotorClient(uri)
     db = client[os.getenv("MONGO_DB_NAME", "academic_feature_store")]
 
-    print("🔌 Connected to MongoDB")
+    print("Connected to MongoDB")
 
     # Your student ID (from your signup)
     student_id = "2300031507@kluniversity.in"
@@ -44,9 +44,9 @@ async def seed_coding_data():
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         })
-        print("✅ Created platform profiles")
+        print("Created platform profiles")
     else:
-        print("ℹ️  Platform profiles already exist")
+        print("Platform profiles already exist")
 
     # ─────────────────────────────────────────────────────────────
     # 2. Create coding activity events (last 60 days)
@@ -55,7 +55,7 @@ async def seed_coding_data():
 
     # Delete old test data
     await coding_collection.delete_many({"student_id": student_id})
-    print("🗑️  Cleared old coding activity")
+    print("Cleared old coding activity")
 
     platforms = [
         {"slug": "leetcode", "name": "LeetCode"},
@@ -101,7 +101,7 @@ async def seed_coding_data():
     # Insert all events
     if events:
         await coding_collection.insert_many(events)
-        print(f"✅ Inserted {len(events)} coding activity events")
+        print(f"Inserted {len(events)} coding activity events")
 
     # ─────────────────────────────────────────────────────────────
     # 3. Create aggregated coding stats
@@ -181,13 +181,13 @@ async def seed_coding_data():
     }
 
     await stats_collection.insert_one(stats_doc)
-    print("✅ Created aggregated coding stats")
+    print("Created aggregated coding stats")
 
     # ─────────────────────────────────────────────────────────────
     # 4. Print summary
     # ─────────────────────────────────────────────────────────────
     print("\n" + "=" * 60)
-    print("📊 CODING DATA SUMMARY")
+    print("CODING DATA SUMMARY")
     print("=" * 60)
     print(f"Student ID:        {student_id}")
     print(f"Total Problems:    {len(events)}")
@@ -197,18 +197,18 @@ async def seed_coding_data():
     print("-" * 60)
     print("Platform Breakdown:")
     for p in stats_doc["platforms"]:
-        print(f"  {p['name']:12} → {p['problems_solved']:3} problems ({p['easy']}E / {p['medium']}M / {p['hard']}H)")
+        print(f"  {p['name']:12} -> {p['problems_solved']:3} problems ({p['easy']}E / {p['medium']}M / {p['hard']}H)")
     print("-" * 60)
     print("Weekly Activity (Mon-Sun):")
     days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     for i, count in enumerate(weekly_activity):
-        bar = "█" * count + "░" * (5 - min(count, 5))
+        bar = "#" * count + "." * (5 - min(count, 5))
         print(f"  {days[i]}: {bar} {count}")
     print("=" * 60)
 
     client.close()
-    print("\n✅ Done! Coding data seeded successfully.")
-    print("👉 Now login to see the Coding Activity Card on your dashboard.")
+    print("\nDone! Coding data seeded successfully.")
+    print("Now login to see the Coding Activity Card on your dashboard.")
 
 
 if __name__ == "__main__":

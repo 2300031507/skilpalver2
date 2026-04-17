@@ -125,6 +125,7 @@ export function TeacherDashboard({ user }) {
                   <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Student</th>
                   <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Identity</th>
                   <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                  <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Coding Report</th>
                   <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                 </tr>
               </thead>
@@ -144,6 +145,12 @@ export function TeacherDashboard({ user }) {
                     </td>
                     <td className="px-8 py-4">
                       <PulseStatus level={s.risk_level} />
+                    </td>
+                    <td className="px-8 py-4">
+                      <div className="flex items-center gap-2">
+                        <FiCode className="text-indigo-400" />
+                        <span className="text-xs font-bold text-slate-600">{s.coding_summary || "No data"}</span>
+                      </div>
                     </td>
                     <td className="px-8 py-4 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

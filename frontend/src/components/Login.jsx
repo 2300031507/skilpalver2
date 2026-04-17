@@ -29,14 +29,17 @@ export const Login = ({ onLogin }) => {
     setLoading(true);
     try {
       const res = await login(email, password);
+      console.log("Login response:", res);
       // res.user has { id, name, email, role, university_id, ... }
-      onLogin({
+      const userData = {
         id: res.user.id,
         name: res.user.name,
         email: res.user.email,
         role: res.user.role,
         university_id: res.user.university_id,
-      });
+      };
+      localStorage.setItem("user", JSON.stringify(userData));
+      onLogin(userData);
     } catch (err) {
       setError(err.message || "Login failed — check your email and password");
     } finally {

@@ -29,6 +29,7 @@ async def test():
     needed = [
         "raw_events", "student_features", "platform_configs",
         "student_platform_profiles", "bulk_ingest_jobs",
+        "users_students", "users_teachers", "users_admins",
     ]
     for name in needed:
         if name not in collections:
@@ -45,6 +46,9 @@ async def test():
     await db.student_features.create_index(
         [("university_id", 1), ("student_id", 1), ("course_id", 1)], unique=True
     )
+    await db.users_students.create_index("email", unique=True)
+    await db.users_teachers.create_index("email", unique=True)
+    await db.users_admins.create_index("email", unique=True)
     print("Indexes created.")
 
     # Count docs

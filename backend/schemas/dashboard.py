@@ -35,6 +35,14 @@ class RecoverySuggestion(BaseModel):
     description: str
 
 
+class DailyProgressReport(BaseModel):
+    date: str
+    summary: str
+    problems_solved: int
+    active_minutes: int
+    streak_days: int
+
+
 class StudentDashboardView(BaseModel):
     university_id: str
     student_id: str
@@ -44,6 +52,7 @@ class StudentDashboardView(BaseModel):
     coding_activity: List[CodingActivityPoint]
     coding_platforms: List[CodingPlatformSummary] = []
     recovery_suggestions: List[RecoverySuggestion]
+    daily_report: Optional[DailyProgressReport] = None
 
 
 class ClassRiskBucket(BaseModel):
@@ -57,6 +66,7 @@ class AtRiskStudent(BaseModel):
     course_id: str
     risk_level: str
     explanation: Dict[str, float]
+    coding_summary: Optional[str] = None
 
 
 class TeacherDashboardView(BaseModel):

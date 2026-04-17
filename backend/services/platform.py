@@ -13,8 +13,11 @@ from backend.clients.mongo_client import get_db
 from backend.settings import MongoCollections, DEFAULT_PLATFORM_REGISTRY
 from backend.schemas.platform import (
     PlatformConfigIn, PlatformConfigOut, PlatformEntry,
-    LinkPlatformRequest, StudentPlatformProfileOut, StudentProfileEntry,
+    LinkPlatformRequest, UnlinkPlatformRequest, StudentPlatformProfileOut, StudentProfileEntry,
     BulkLinkRequest, BulkLinkResponse,
+)
+from backend.services.coding_platform_sync import (
+    sync_coding_platform_data, extract_username, validate_coding_profile
 )
 
 
@@ -95,12 +98,24 @@ async def link_student_profiles(
     # Build a slug → entry map for fast merge
     slug_map = {p["platform_slug"]: p for p in existing["profiles"]}
     now = datetime.now(timezone.utc)
+    
     for entry in req.profiles:
+        # 1. Extract username if they pasted a URL
+        actual_username = extract_username(entry.platform_slug, entry.username)
+        
+        # 2. Validate the profile (real check)
+        is_valid = await validate_coding_profile(entry.platform_slug, actual_username)
+        if not is_valid:
+             raise HTTPException(
+                 status_code=status.HTTP_400_BAD_REQUEST, 
+                 detail=f"The {entry.platform_slug} profile '{actual_username}' does not exist or is invalid. Please check the URL/Username."
+             )
+
         slug_map[entry.platform_slug] = {
             "platform_slug": entry.platform_slug,
-            "username": entry.username,
+            "username": actual_username,
             "linked_at": now.isoformat(),
-            "verified": entry.verified,
+            "verified": is_valid,
         }
 
     existing["profiles"] = list(slug_map.values())
@@ -110,7 +125,46 @@ async def link_student_profiles(
         {"$set": existing},
         upsert=True,
     )
+
+    # Trigger background sync for each newly linked/updated profile
+    for entry in req.profiles:
+        # In a real app, use BackgroundTasks or Celery
+        try:
+            await sync_coding_platform_data(
+                req.university_id, req.student_id, 
+                entry.platform_slug, entry.username
+            )
+        except Exception as e:
+            print(f"[platform] Sync failed for {entry.platform_slug}: {e}")
+
     return StudentPlatformProfileOut(**existing)
+
+
+async def unlink_student_profile(
+    req: UnlinkPlatformRequest,
+) -> StudentPlatformProfileOut:
+    """
+    Removes a platform link from the student's profiles.
+    """
+    db = get_db()
+    col = db[MongoCollections.STUDENT_PLATFORM_PROFILES]
+
+    await col.update_one(
+        {"university_id": req.university_id, "student_id": req.student_id},
+        {"$pull": {"profiles": {"platform_slug": req.platform_slug}}}
+    )
+
+    doc = await col.find_one(
+        {"university_id": req.university_id, "student_id": req.student_id},
+        {"_id": 0}
+    )
+    if not doc:
+        return StudentPlatformProfileOut(
+            university_id=req.university_id,
+            student_id=req.student_id,
+            profiles=[]
+        )
+    return StudentPlatformProfileOut(**doc)
 
 
 async def get_student_profiles(

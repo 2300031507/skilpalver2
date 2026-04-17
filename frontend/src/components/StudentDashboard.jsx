@@ -4,7 +4,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar 
 } from "recharts";
-import { FiActivity, FiCode, FiBookOpen, FiClock, FiAlertCircle, FiCheckCircle, FiTrendingUp } from "react-icons/fi";
+import { FiActivity, FiCode, FiBookOpen, FiClock, FiAlertCircle, FiCheckCircle, FiTrendingUp, FiZap, FiCalendar } from "react-icons/fi";
 
 const PulseBadge = ({ level }) => {
   const configs = {
@@ -63,6 +63,14 @@ export function StudentDashboard({ user }) {
       }
     }
     load();
+
+    // Add listener for profile updates to refresh dashboard
+    const handleUpdate = () => {
+      console.log("Refreshing dashboard due to profile update...");
+      load();
+    };
+    window.addEventListener("profile-updated", handleUpdate);
+    return () => window.removeEventListener("profile-updated", handleUpdate);
   }, [user.id]);
 
   if (loading) return (
@@ -80,6 +88,21 @@ export function StudentDashboard({ user }) {
     </div>
   );
 
+  // Calculate total problems solved from all platforms
+  const totalProblemsSolved = data.coding_platforms?.reduce((acc, p) => acc + p.problems_solved, 0) || 0;
+  const codingRadarData = data.coding_platforms?.map(p => ({
+    subject: p.display_name,
+    A: p.problems_solved,
+    fullMark: Math.max(150, p.problems_solved + 20)
+  })) || [
+    { subject: 'LeetCode', A: 0, fullMark: 150 },
+    { subject: 'CodeChef', A: 0, fullMark: 150 },
+    { subject: 'CodeForces', A: 0, fullMark: 150 },
+  ];
+
+  const attendanceValue = data.attendance_trend?.[0]?.attendance_percent * 100 || 0;
+  const lmsValue = data.lms_engagement?.find(e => e.name === "time_spent_minutes")?.value || 0;
+
   return (
     <div className="space-y-10">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -90,10 +113,46 @@ export function StudentDashboard({ user }) {
         <PulseBadge level={data.risk_level} />
       </div>
 
+      {/* Daily Progress Report Card */}
+      {data.daily_report && (
+        <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-3xl p-8 text-white shadow-xl shadow-indigo-200">
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-4">
+                <FiZap className="text-yellow-400 fill-yellow-400" />
+                <span className="text-xs font-black uppercase tracking-widest opacity-80">Daily Progress Report</span>
+              </div>
+              <h2 className="text-2xl font-black mb-2">{data.daily_report.summary}</h2>
+              <div className="flex gap-6 mt-6">
+                <div className="text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Solved</p>
+                  <p className="text-xl font-black">{data.daily_report.problems_solved}</p>
+                </div>
+                <div className="w-px h-10 bg-white/20"></div>
+                <div className="text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Active</p>
+                  <p className="text-xl font-black">{data.daily_report.active_minutes}m</p>
+                </div>
+                <div className="w-px h-10 bg-white/20"></div>
+                <div className="text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Streak</p>
+                  <p className="text-xl font-black">{data.daily_report.streak_days} days</p>
+                </div>
+              </div>
+            </div>
+            <div className="hidden lg:block">
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20">
+                <FiCalendar className="text-4xl" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard 
           title="Attendance" 
-          value="94" 
+          value={attendanceValue.toFixed(0)} 
           unit="%" 
           trend={2.4} 
           icon={FiCheckCircle} 
@@ -101,8 +160,8 @@ export function StudentDashboard({ user }) {
         />
         <MetricCard 
           title="LMS Engagement" 
-          value="8.5" 
-          unit="/10" 
+          value={(lmsValue / 60).toFixed(1)} 
+          unit="hrs" 
           trend={-1.2} 
           icon={FiBookOpen} 
           colorClass="bg-indigo-500" 
@@ -117,7 +176,7 @@ export function StudentDashboard({ user }) {
         />
         <MetricCard 
           title="Problems Solved" 
-          value="342" 
+          value={totalProblemsSolved} 
           unit="total" 
           trend={8} 
           icon={FiCode} 
@@ -159,13 +218,7 @@ export function StudentDashboard({ user }) {
           <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-6">Cross-platform skills</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
-                { subject: 'LeetCode', A: 120, fullMark: 150 },
-                { subject: 'CodeChef', A: 98, fullMark: 150 },
-                { subject: 'CodeForces', A: 86, fullMark: 150 },
-                { subject: 'LMS Quiz', A: 99, fullMark: 150 },
-                { subject: 'Project', A: 85, fullMark: 150 },
-              ]}>
+              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={codingRadarData}>
                 <PolarGrid stroke="#f1f5f9" />
                 <PolarAngleAxis dataKey="subject" tick={{fill: '#64748b', fontSize: 10, fontWeight: 'bold'}} />
                 <Radar name="Skills" dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.6} />

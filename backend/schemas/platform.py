@@ -66,6 +66,13 @@ class StudentPlatformProfileOut(BaseModel):
     profiles: List[StudentProfileEntry]
 
 
+class UnlinkPlatformRequest(BaseModel):
+    """Student unlinks a platform username."""
+    university_id: str
+    student_id: str
+    platform_slug: str
+
+
 # ── Bulk link via CSV / JSON ────────────────────────────────
 
 class BulkLinkRow(BaseModel):

@@ -15,13 +15,13 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from backend.schemas.platform import (
     PlatformConfigIn, PlatformConfigOut,
-    LinkPlatformRequest, StudentPlatformProfileOut,
+    LinkPlatformRequest, UnlinkPlatformRequest, StudentPlatformProfileOut,
     BulkLinkRequest, BulkLinkResponse,
 )
 from backend.services.platform import (
     get_platform_registry,
     upsert_platform_config, get_platform_config,
-    link_student_profiles, get_student_profiles,
+    link_student_profiles, unlink_student_profile, get_student_profiles,
     bulk_link_profiles,
 )
 from backend.services.auth import get_current_actor
@@ -72,6 +72,12 @@ async def read_student_profiles(university_id: str, student_id: str):
 async def link_profiles(body: LinkPlatformRequest, actor=Depends(get_current_actor)):
     """Student submits their platform usernames (one or many at once)."""
     return await link_student_profiles(body)
+
+
+@router.post("/platforms/profile/unlink", response_model=StudentPlatformProfileOut)
+async def unlink_profile(body: UnlinkPlatformRequest, actor=Depends(get_current_actor)):
+    """Student removes a platform link."""
+    return await unlink_student_profile(body)
 
 
 @router.post("/platforms/profile/bulk-link", response_model=BulkLinkResponse)
